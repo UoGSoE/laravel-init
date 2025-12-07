@@ -40,6 +40,8 @@ $gitignoreEntries = [
     'auth.json',
 ];
 
+$boostPromptUrl = "https://raw.githubusercontent.com/UoGSoE/boost-prompts/refs/heads/master/.ai/guidelines/team-conventions.blade.php"
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -283,6 +285,12 @@ PHP;
     }
 }
 
+function updateBoostPrompt(): void
+{
+    $contents = file_get_contents($boostPromptUrl);
+    file_put_contents(".ai/guidelines/team-conventions.blade.php", $contents);
+}
+
 // ============================================================================
 // Main Script
 // ============================================================================
@@ -336,6 +344,10 @@ echo "\n";
 // ============================================================================
 // File Copying
 // ============================================================================
+
+info("Updating Boost prompt from GitHub...");
+updateBoostPrompt();
+echo "\n";
 
 info("Copying template files...");
 copyTemplateFiles($srcDir, $destDir, $excludeFiles, $autoCopyPatterns);

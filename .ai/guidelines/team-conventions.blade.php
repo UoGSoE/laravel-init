@@ -51,7 +51,11 @@ We have a rough convention for the order of functionality in our Eloquent models
 
 This convention makes it much easier to navigate the code and find the methods you are looking for.
 
-Also note that we like 'fat models' - helper methods, methods that make the main logic read more naturally - are all fine to put on the model.  Do not abstract to service classes without checking with the user first.  And if there are not existing service classes in the application **NEVER** introduce them unless given explicit permission by the user.
+Also note that we like 'fat models' - helper methods, methods that make the main logic read more naturally - are all fine to put on the model.  Do not abstract to service classes without checking with the user first.  If the user agrees to a service class our convention is to use \App\Services\ .
+
+We like enums over hardcoded strings for things like statuses, roles, etc.  Use laravel's casts to convert the enum to a value.  Our convention is to use \App\Enums\ .
+
+Eloquents `findOrFail` or `firstOrFail` methods are your friend.  We have sentry.io exception reporting.  If the application user is trying to do something weird with a non-existent records - let it blow up in their face and be reported to the developers.  
 
 ### Livewire component class conventions
 
@@ -59,13 +63,14 @@ Our conventions for livewire components are:
 
 1. Properties and attributes at the top
 1.1. Any properties which are used as filters/search or active-tab parameters in the component should use the `#[Url]` livewire attribute
+1.2. Be careful of the `#[Url]` attributes though.  You should avoid using type hints on the properties being tracked in the URL due to the way livewire works.  They will always come through as strings, so you might need to cast or handle those as appropriate. 
 2. The mount() method followed by the render() method
 3. Any lifecycle methods (such as updatedFoo()) next
 4. Any custom methods after all that.
 
 ### Mail notifications
 
-We always use queued mail notifications and we always use the --markdown versions for the templates.  Our conventions is to use the 'emails' folder, eg `artisan make:mail SomethingHappened --markdown=emails.something-happened.blade.php`
+We always use queued mail notifications and we always use the --markdown versions for the templates.  Our conventions is to use the 'emails' folder, eg `php artisan make:mail SomethingHappened --markdown=emails.something-happened`
 
 ### Testing style
 
@@ -83,6 +88,8 @@ We like to use helpful variable names in tests.  For example we might have '$use
 
 When writing tests and you are getting unexpected results with assertSee or assertDontSee - consider that it might be that Laravels exception page is showing the values in the stack trace or contextual debug into.  Do a quick sanity check using an assertStatus() call or assertHasNoErrors().  If that doesn't help **ask the user for help**.  They can visit the page in the browser and tell you exactly what is happening and even provide you a screenshot.
 
+If you can't figure out why a test is failing after one or two fixes, add a healthy amount of logging in the test and code using dump() or dd() so that you can see what is going on rather than guessing.
+
 Note: if you are running the whole test suite, you can use the `--compact` flag.  It will still show you the full output for any failures, but will save you having to fill up your context window with all the passing test names.
 
 ### UI styling
@@ -91,7 +98,7 @@ We use the FluxUI component library for our UI and Livewire/AlpineJS for interac
 
 Always check with the laravel boost MCP tool for flux documentation.
 
-Do not add css classes to components for visual styleing - only for spacing/alignment/positioning.  Flux has it's own styling so anything that is added will make the component look out of place.  Follow the flux conventions.  Again - the laravel boost tool is your helper here.
+Do not add css classes to components for visual styling - only for spacing/alignment/positioning.  Flux has it's own styling so anything that is added will make the component look out of place.  Follow the flux conventions.  Again - the laravel boost tool is your helper here.
 
 Flux uses tailwindcss for styling and also uses it's css reset.  Make sure that anything 'clickable' has a cursor-pointer class added to it.
 
@@ -105,9 +112,17 @@ Always use the appropriate flux components instead of just <p> and <a> tags. Eg:
    ```
 @endverbatim
 
+### Validation
+
+Please don't write custom validation messages.  The laravel ones are fine.
+
+Leverage any project enums using laravels Enum rules.
+
+Remember you can validate existence of records inside validation rules and save yourself further `if { ... }` checks later.
+
 ### If in doubt...
 
-The user us always happy to help you out.  Ask questions before you add new logic or change existing code.
+The user us always happy to help you out.  They know the whole context of the application, stakeholders, conventions, etc.  They would rather you asked than take a wrong path.
 
 Most of our applications have been running in production for a long time, so there are all sorts of edge cases, features that were added, then removed, the re-added with a tweak, etc.  Legacy code is a minefield - so lean on the user.
 
@@ -120,7 +135,11 @@ Simplicity and readability of the code.  If you read the code and you can't imag
 
 ### Use of lando
 
-We use lando for local development - but we also have functional local development environments.  You can run laravel/artisan commands directly without using lando.  The only thing that requires lando is interrogating the local development database - which is much better done using dump() or dd() calls in code/tests.  The user will be very suspicious if you try and mess with their development database.
+We use lando for local development - but we also have functional local development environments.  You can run laravel/artisan commands directly without using lando.  
+
+Do not try and run any commands or tools that interact with the database.  Either lando or artisan or boost.  The user will run migrations for you if you ask.  
+
+Note: The local test environment uses an in-memory database via the RefreshDatabase trait.  So there is no need to run migrations or seeders in the test environment.
 
 ### Notes from your past self
 
