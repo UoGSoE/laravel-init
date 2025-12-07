@@ -15,7 +15,7 @@
             <flux:sidebar sticky collapsible class="bg-zinc-50 dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-700 print:hidden">
                 <flux:sidebar.header>
                     <flux:sidebar.brand
-                        href="#"                l
+                        href="#"
                         logo="https://fluxui.dev/img/demo/logo.png"
                         logo:dark="https://fluxui.dev/img/demo/dark-mode-logo.png"
                         name="{{  config('app.name') }}"
@@ -51,7 +51,7 @@
 
             <flux:spacer />
 
-            <flux:dropdown position="top" alignt="start">
+            <flux:dropdown position="top" align="start">
 
                 <flux:menu>
                     <flux:menu.item icon="arrow-right-start-on-rectangle">
