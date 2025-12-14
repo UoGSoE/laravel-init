@@ -40,7 +40,7 @@ $gitignoreEntries = [
     'auth.json',
 ];
 
-$boostPromptUrl = "https://raw.githubusercontent.com/UoGSoE/boost-prompts/refs/heads/master/.ai/guidelines/team-conventions.blade.php"
+$boostPromptUrl = "https://raw.githubusercontent.com/UoGSoE/boost-prompts/refs/heads/master/.ai/guidelines/team-conventions.blade.php";
 
 // ============================================================================
 // Helper Functions
