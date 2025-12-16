@@ -285,10 +285,22 @@ PHP;
     }
 }
 
-function updateBoostPrompt(): void
+function updateBoostPrompt(string $boostPromptUrl): void
 {
     $contents = file_get_contents($boostPromptUrl);
     file_put_contents(".ai/guidelines/team-conventions.blade.php", $contents);
+}
+
+function createTestDataSeeder(string $destDir): void
+{
+    if (!file_exists("$destDir/database/seeders/TestDataSeeder.php")) {
+        $seederContents = file_get_contents("./database/seeders/TestDataSeeder.php");
+        file_put_contents("$destDir/database/seeders/TestDataSeeder.php", $seederContents);
+        success("Created TestDataSeeder");
+    } else {
+        info("TestDataSeeder already exists");
+    }
+    echo "\n";
 }
 
 // ============================================================================
@@ -346,7 +358,7 @@ echo "\n";
 // ============================================================================
 
 info("Updating Boost prompt from GitHub...");
-updateBoostPrompt();
+updateBoostPrompt($boostPromptUrl);
 echo "\n";
 
 info("Copying template files...");
@@ -388,6 +400,10 @@ info("Activating Flux license...");
 if (!run("php artisan flux:activate " . escapeshellarg($fluxUsername) . " " . escapeshellarg($fluxLicenseKey), $destDir)) {
     warning("Flux activation may have had issues, please check manually");
 }
+echo "\n";
+
+info("Creating TestDataSeeder...");
+createTestDataSeeder($destDir);
 echo "\n";
 
 // ============================================================================

@@ -32,6 +32,8 @@ Our applications are important but do not contain a lot of data.  So we do not w
 
 We like early returns and guard clauses.  Avoid nesting if statements or using `else` whereever possible.
 
+When creating a new model - please also use the `-mf` flag to generate a migration and factory at the same time.  It just saves running multiple commands so saves some effort.
+
 ### Seeding data for local development
 
 When developing locally, we use a seeder called 'TestDataSeeder' to seed the database with data.  This avoids any potential issues with running laravel's default seeder by accident.
@@ -89,6 +91,24 @@ We like to use helpful variable names in tests.  For example we might have '$use
 When writing tests and you are getting unexpected results with assertSee or assertDontSee - consider that it might be that Laravels exception page is showing the values in the stack trace or contextual debug into.  Do a quick sanity check using an assertStatus() call or assertHasNoErrors().  If that doesn't help **ask the user for help**.  They can visit the page in the browser and tell you exactly what is happening and even provide you a screenshot.
 
 If you can't figure out why a test is failing after one or two fixes, add a healthy amount of logging in the test and code using dump() or dd() so that you can see what is going on rather than guessing.
+
+We also like to keep our tests quite concise.  For example:
+
+@verbatim
+```php
+Livewire::test(CreateProject::class)
+    ->set('name', '')
+    ->set('description', '')
+    ->set('email', 'kkdkdkdkkdkd')
+    ->call('create')
+    ->assertHasErrors(['name', 'description', 'email']);
+assertCount(0, Project::all());
+```
+@endverbatim
+
+Note that we don't have individual tests for each field.  We just test that the form is invalid when the fields are empty.  We don't need to test the error messages (outside of very unique/custom validation rules).
+
+That is a common pattern in our test code.  We will quite often do something like test the happy path, then the sad path.  For most cases we are testing the functionality - not every tiny detail unless it has actual concrete business logic implications.
 
 Note: if you are running the whole test suite, you can use the `--compact` flag.  It will still show you the full output for any failures, but will save you having to fill up your context window with all the passing test names.
 
@@ -151,6 +171,7 @@ Note: The local test environment uses an in-memory database via the RefreshDatab
   - If a requirement says “simple,” take it literally. No defensive programming unless requested.
   - For ambiguous cases, ask.  THIS IS CRITICAL TO THE USER.
   - Do not use the users name or the names of anyone in documents you read.  Your chats with the user are logged to disk so we do not want to leak PII.  Just refer to the user as 'you', or 'stakeholders', 'the person who requested the feature', etc
+  - You are in a local development environment - the test suite uses laravel's RefreshDatabase trait and uses an in-memory sqlite database, so you don't need to run migrations before creating/editing/running tests.
 
 ### Final inspiring quote
 
