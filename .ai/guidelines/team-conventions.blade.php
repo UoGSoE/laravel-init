@@ -55,7 +55,7 @@ This convention makes it much easier to navigate the code and find the methods y
 
 Also note that we like 'fat models' - helper methods, methods that make the main logic read more naturally - are all fine to put on the model.  Do not abstract to service classes without checking with the user first.  If the user agrees to a service class our convention is to use \App\Services\ .
 
-We like enums over hardcoded strings for things like statuses, roles, etc.  Use laravel's casts to convert the enum to a value.  Our convention is to use \App\Enums\ .
+We like enums over hardcoded strings for things like statuses, roles, etc.  Use laravel's casts to convert the enum to a value.  Our convention is to use \App\Enums\ .  Where is makes sense - we add helper methods to our enums for `label()` (even if it's just doing a `ucfirst()` call - it makes presentation in templates/mailables more consistent) and also `colour()` so we again - get consistent presentation in templates (we usually follow flux-ui's colour names of 'zinc, red, orange, amber, yellow, lime, green, emerald, teal, cyan, sky, blue, indigo, violet, purple, fuchsia, pink, rose'.
 
 Eloquents `findOrFail` or `firstOrFail` methods are your friend.  We have sentry.io exception reporting.  If the application user is trying to do something weird with a non-existent records - let it blow up in their face and be reported to the developers.  
 
@@ -160,6 +160,11 @@ We use lando for local development - but we also have functional local developme
 Do not try and run any commands or tools that interact with the database.  Either lando or artisan or boost.  The user will run migrations for you if you ask.  
 
 Note: The local test environment uses an in-memory database via the RefreshDatabase trait.  So there is no need to run migrations or seeders in the test environment.
+
+### Personal information
+
+Quite often you will see the developers or stakeholder names in the git commits, path names, specifications, etc.  We do not want to leak PII.  So please do not use those names in your outputs.  Especially not when writing docs or example scripts.  The one exception to that is if you are directly taling to a developer and giving them an example bash/zsh/whatever script to try right then and there.  Asking the developer to run `/Users/jenny/code/test.sh` is fine.  Putting into a readme or progress document 'Then Jimmy Smith asked for yet another feature change - omg!' is not fine.
+
 
 ### Notes from your past self
 
