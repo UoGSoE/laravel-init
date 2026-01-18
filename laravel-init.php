@@ -391,7 +391,7 @@ if (!run("npm install -D vite tailwindcss @tailwindcss/vite laravel-vite-plugin"
 echo "\n";
 
 info("Installing composer packages...");
-if (!run("composer require livewire/flux laravel/socialite socialiteproviders/keycloak laravel/horizon laravel/sanctum", $destDir)) {
+if (!run("composer require livewire/livewire livewire/flux laravel/socialite socialiteproviders/keycloak laravel/horizon laravel/sanctum", $destDir)) {
     warning("composer require may have had issues, please check manually");
 }
 echo "\n";

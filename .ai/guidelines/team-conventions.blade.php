@@ -90,7 +90,7 @@ We like to use helpful variable names in tests.  For example we might have '$use
 
 When writing tests and you are getting unexpected results with assertSee or assertDontSee - consider that it might be that Laravels exception page is showing the values in the stack trace or contextual debug into.  Do a quick sanity check using an assertStatus() call or assertHasNoErrors().  If that doesn't help **ask the user for help**.  They can visit the page in the browser and tell you exactly what is happening and even provide you a screenshot.
 
-If you can't figure out why a test is failing after one or two fixes, add a healthy amount of logging in the test and code using dump() or dd() so that you can see what is going on rather than guessing.
+You may also have the 'test-debug' agent available to you who can help get you unstuck without having to ask the user.  But do not keep looping without trying to ask the user or the agent!  The user spends taxpayer money from a tight research council budget on every token!
 
 We also like to keep our tests quite concise.  For example:
 
