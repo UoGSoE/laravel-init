@@ -43,11 +43,15 @@ php artisan project:init
 | `--skip-npm` | Skip npm package installation |
 | `--skip-composer` | Skip composer package installation |
 | `--skip-flux` | Skip Flux activation |
+| `--skip-docker` | Skip Docker/Lando/CI template files |
+| `--dry-run` | Show what would change without writing files |
 | `--force` | Overwrite all files without prompting |
 
 ### File Diff Preview
 
 When copying template files that already exist in your project, the command prompts with `y/n/d(iff)`. Pressing `d` shows a unified diff between your existing file and the template, so you can make an informed decision before overwriting.
+
+At the end of execution, `project:init` prints a summary of copied/skipped files and command execution status.
 
 ## Docker/Lando Setup
 

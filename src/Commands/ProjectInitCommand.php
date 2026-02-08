@@ -11,6 +11,8 @@ class ProjectInitCommand extends Command
                             {--skip-npm : Skip npm package installation}
                             {--skip-composer : Skip composer package installation}
                             {--skip-flux : Skip Flux activation}
+                            {--skip-docker : Skip Docker/Lando/CI template files}
+                            {--dry-run : Show what would change without writing files}
                             {--force : Overwrite all files without prompting}';
 
     protected $description = 'Bootstrap this Laravel project with Flux UI, Keycloak SSO, Docker/Lando, and common packages';
@@ -56,10 +58,44 @@ class ProjectInitCommand extends Command
 
     protected array $internalStubFiles = ['.env.lando'];
 
+    protected array $skipDockerStubPaths = [
+        '.dockerignore',
+        '.env.github',
+        '.env.gitlab',
+        '.github/',
+        '.gitlab-ci.yml',
+        '.lando.yml',
+        'Dockerfile',
+        'docker/',
+        'docker-compose.yml',
+        'prod-stack.yml',
+        'qa-stack.yml',
+        'phpunit-compose.yml',
+        'phpunit.Dockerfile',
+        'phpunit.github.xml',
+        'phpunit.gitlab.xml',
+    ];
+
+    protected array $summary = [
+        'copied' => 0,
+        'overwritten' => 0,
+        'skipped' => 0,
+        'docker_skipped' => 0,
+        'would_copy' => 0,
+        'processes_ran' => 0,
+        'processes_failed' => 0,
+        'processes_skipped' => 0,
+        'file_writes' => 0,
+        'file_writes_skipped' => 0,
+    ];
+
     public function handle(): int
     {
         $this->newLine();
         $this->components->info('Laravel Project Init');
+        if ($this->isDryRun()) {
+            $this->components->warn('Dry-run mode enabled: no files will be changed');
+        }
         $this->newLine();
 
         if (! $this->validateEnvironment()) {
@@ -104,6 +140,8 @@ class ProjectInitCommand extends Command
         $this->newLine();
         $this->components->info('Setup Complete!');
         $this->newLine();
+        $this->printSummary();
+        $this->newLine();
         $this->suggestBoost();
 
         return self::SUCCESS;
@@ -147,7 +185,7 @@ class ProjectInitCommand extends Command
         $destPath = base_path('.ai/guidelines/team-conventions.blade.php');
         $destDir = dirname($destPath);
 
-        if (! is_dir($destDir)) {
+        if (! is_dir($destDir) && ! $this->isDryRun()) {
             mkdir($destDir, 0755, true);
         }
 
@@ -159,7 +197,7 @@ class ProjectInitCommand extends Command
             return;
         }
 
-        file_put_contents($destPath, $contents);
+        $this->writeFile($destPath, $contents);
         $this->info('Updated team-conventions.blade.php');
     }
 
@@ -179,8 +217,17 @@ class ProjectInitCommand extends Command
             $relativePath = substr($file->getPathname(), strlen($stubsDir) + 1);
             $destPath = $destDir.'/'.$relativePath;
 
+            if ($this->shouldSkipDockerStub($relativePath)) {
+                if (! $file->isDir()) {
+                    $this->summary['docker_skipped']++;
+                    $this->line("  Skipped (--skip-docker): {$relativePath}");
+                }
+
+                continue;
+            }
+
             if ($file->isDir()) {
-                if (! is_dir($destPath)) {
+                if (! is_dir($destPath) && ! $this->isDryRun()) {
                     mkdir($destPath, 0755, true);
                 }
 
@@ -192,32 +239,53 @@ class ProjectInitCommand extends Command
             }
 
             $destDirPath = dirname($destPath);
-            if (! is_dir($destDirPath)) {
+            if (! is_dir($destDirPath) && ! $this->isDryRun()) {
                 mkdir($destDirPath, 0755, true);
             }
 
             if (file_exists($destPath)) {
                 if ($this->option('force') || $this->shouldAutoCopy($relativePath)) {
-                    copy($file->getPathname(), $destPath);
-                    $this->line("  Copied: {$relativePath}");
+                    $this->copyOrDescribe($file->getPathname(), $destPath, $relativePath, true);
                 } else {
                     $action = $this->promptWithDiff($relativePath, $file->getPathname(), $destPath);
                     if ($action === 'y') {
-                        copy($file->getPathname(), $destPath);
-                        $this->line("  Copied: {$relativePath}");
+                        $this->copyOrDescribe($file->getPathname(), $destPath, $relativePath, true);
                     } else {
+                        $this->summary['skipped']++;
                         $this->line("  Skipped: {$relativePath}");
                     }
                 }
             } else {
-                copy($file->getPathname(), $destPath);
-                $this->line("  Copied: {$relativePath}");
+                $this->copyOrDescribe($file->getPathname(), $destPath, $relativePath, false);
             }
         }
     }
 
+    private function copyOrDescribe(string $sourcePath, string $destPath, string $relativePath, bool $overwrite): void
+    {
+        if ($this->isDryRun()) {
+            $this->summary['would_copy']++;
+            $verb = $overwrite ? 'Would overwrite' : 'Would copy';
+            $this->line("  {$verb}: {$relativePath}");
+
+            return;
+        }
+
+        copy($sourcePath, $destPath);
+        $this->summary['copied']++;
+        if ($overwrite) {
+            $this->summary['overwritten']++;
+        }
+
+        $this->line("  Copied: {$relativePath}");
+    }
+
     private function promptWithDiff(string $relativePath, string $stubPath, string $existingPath): string
     {
+        if ($this->isDryRun()) {
+            return 'y';
+        }
+
         while (true) {
             $action = strtolower(trim(
                 $this->ask("Overwrite {$relativePath}? [y/n/d(iff)]", 'n')
@@ -296,7 +364,7 @@ class ProjectInitCommand extends Command
             $contents
         );
 
-        file_put_contents($providersFile, $newContents);
+        $this->writeFile($providersFile, $newContents);
         $this->info('Registered SSOServiceProvider in bootstrap/providers.php');
     }
 
@@ -357,7 +425,7 @@ class ProjectInitCommand extends Command
                 ."\n{$requireLine}\n"
                 .substr($contents, $insertPos);
 
-            file_put_contents($file, $newContents);
+            $this->writeFile($file, $newContents);
             $this->info('Injected SSO route into routes/web.php');
         } else {
             $this->warn('Could not find suitable location in routes/web.php, please add manually:');
@@ -401,7 +469,7 @@ PHP;
                 .$keycloakConfig."\n"
                 .substr($contents, $lastBracketPos);
 
-            file_put_contents($file, $newContents);
+            $this->writeFile($file, $newContents);
             $this->info('Injected Keycloak config into config/services.php');
         } else {
             $this->warn('Could not find suitable location in config/services.php, please add manually');
@@ -427,7 +495,7 @@ PHP;
             return;
         }
 
-        copy($envExamplePath, $envPath);
+        $this->copyFile($envExamplePath, $envPath);
         $this->info('Created .env from .env.example');
     }
 
@@ -530,7 +598,7 @@ PHP;
             $updated = "name: {$slug}\n".$updated;
         }
 
-        file_put_contents($landoPath, $updated);
+        $this->writeFile($landoPath, $updated);
     }
 
     private function setEnvValue(string $file, string $key, string $value): void
@@ -551,7 +619,7 @@ PHP;
         if (preg_match($pattern, $contents)) {
             $updated = preg_replace($pattern, $replacement, $contents, 1);
             if ($updated !== null) {
-                file_put_contents($file, $updated);
+                $this->writeFile($file, $updated);
             }
 
             return;
@@ -560,13 +628,13 @@ PHP;
         if (preg_match($commentedPattern, $contents)) {
             $updated = preg_replace($commentedPattern, $replacement, $contents, 1);
             if ($updated !== null) {
-                file_put_contents($file, $updated);
+                $this->writeFile($file, $updated);
             }
 
             return;
         }
 
-        file_put_contents($file, rtrim($contents)."\n{$replacement}\n");
+        $this->writeFile($file, rtrim($contents)."\n{$replacement}\n");
     }
 
     private function ensureBlankLineBeforeEnvKey(string $file, string $key): void
@@ -601,7 +669,7 @@ PHP;
             }
 
             array_splice($lines, $index, 0, ['']);
-            file_put_contents($file, implode("\n", $lines)."\n");
+            $this->writeFile($file, implode("\n", $lines)."\n");
 
             return;
         }
@@ -620,7 +688,7 @@ PHP;
             return;
         }
 
-        copy($envPath, $envExamplePath);
+        $this->copyFile($envPath, $envExamplePath);
         $this->info('Updated .env.example from .env');
     }
 
@@ -681,7 +749,7 @@ PHP;
             return;
         }
 
-        file_put_contents($gitignore, $contents."\n{$entry}");
+        $this->writeFile($gitignore, $contents."\n{$entry}");
     }
 
     private function suggestBoost(): void
@@ -699,13 +767,51 @@ PHP;
 
     private function runProcess(array $command): bool
     {
+        if ($this->isDryRun()) {
+            $this->summary['processes_skipped']++;
+            $this->line('  [dry-run] Skipping command: '.implode(' ', $command));
+
+            return true;
+        }
+
         $process = new Process($command, base_path());
         $process->setTimeout(300);
         $process->run(function ($type, $buffer) {
             $this->output->write($buffer);
         });
 
+        $this->summary['processes_ran']++;
+        if (! $process->isSuccessful()) {
+            $this->summary['processes_failed']++;
+        }
+
         return $process->isSuccessful();
+    }
+
+    private function copyFile(string $sourcePath, string $destPath): void
+    {
+        if ($this->isDryRun()) {
+            $this->summary['file_writes_skipped']++;
+            $this->line("  [dry-run] Would copy {$sourcePath} -> {$destPath}");
+
+            return;
+        }
+
+        copy($sourcePath, $destPath);
+        $this->summary['file_writes']++;
+    }
+
+    private function writeFile(string $path, string $contents): void
+    {
+        if ($this->isDryRun()) {
+            $this->summary['file_writes_skipped']++;
+            $this->line("  [dry-run] Would write {$path}");
+
+            return;
+        }
+
+        file_put_contents($path, $contents);
+        $this->summary['file_writes']++;
     }
 
     private function stubsPath(string $relativePath = ''): string
@@ -718,6 +824,50 @@ PHP;
     private function isInternalStubFile(string $relativePath): bool
     {
         return in_array($relativePath, $this->internalStubFiles, true);
+    }
+
+    private function shouldSkipDockerStub(string $relativePath): bool
+    {
+        if (! $this->option('skip-docker')) {
+            return false;
+        }
+
+        foreach ($this->skipDockerStubPaths as $stubPath) {
+            if (str_ends_with($stubPath, '/')) {
+                $dirPath = rtrim($stubPath, '/');
+                if ($relativePath === $dirPath || str_starts_with($relativePath, $stubPath)) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            if ($relativePath === $stubPath) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isDryRun(): bool
+    {
+        return (bool) $this->option('dry-run');
+    }
+
+    private function printSummary(): void
+    {
+        $this->info('Summary:');
+        $this->line('  Copied files: '.$this->summary['copied']);
+        $this->line('  Overwritten files: '.$this->summary['overwritten']);
+        $this->line('  Skipped files: '.$this->summary['skipped']);
+        $this->line('  Skipped by --skip-docker: '.$this->summary['docker_skipped']);
+        $this->line('  Dry-run would copy: '.$this->summary['would_copy']);
+        $this->line('  Commands run: '.$this->summary['processes_ran']);
+        $this->line('  Commands failed: '.$this->summary['processes_failed']);
+        $this->line('  Commands skipped in dry-run: '.$this->summary['processes_skipped']);
+        $this->line('  File writes: '.$this->summary['file_writes']);
+        $this->line('  File writes skipped in dry-run: '.$this->summary['file_writes_skipped']);
     }
 
     private function projectSlug(): string

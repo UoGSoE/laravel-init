@@ -120,7 +120,7 @@ services:
       MYSQL_PASSWORD: secret
 
   mailhog:
-    image: mailhog/mailhog
+    image: axllent/mailpit
     deploy:
       labels:
         # note: this assumes traefik v2

@@ -78,7 +78,7 @@ services:
         target: .env
 
   redis:
-    image: redis:5.0.4
+    image: redis:8.2.2
     volumes:
       - redis:/data
 
@@ -93,7 +93,7 @@ services:
       MYSQL_PASSWORD: secret
 
   mailhog:
-    image: mailhog/mailhog
+    image: axllent/mailpit
     ports:
       - "3025:8025"
 

@@ -8,6 +8,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Laravel\Socialite\Facades\Socialite;
@@ -15,8 +17,12 @@ use Livewire\Features\SupportRedirects\Redirector as LivewireRedirector;
 
 class SSOController extends Controller
 {
-    public function login() : View
+    public function login() : View|RedirectResponse|LivewireRedirector
     {
+        if (Auth::check()) {
+            return $this->getSuccessRedirect();
+        }
+
         return view('auth.login');
     }
 
@@ -36,9 +42,23 @@ class SSOController extends Controller
             'password' => 'required',
         ]);
 
+        $throttleKey = sprintf('local-login:%s|%s', strtolower((string) $request->input('username')), $request->ip());
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            return redirect()->back()->withErrors([
+                'username' => "Too many login attempts. Try again in {$seconds} seconds.",
+            ]);
+        }
+
         if (auth()->attempt($request->only('username', 'password'))) {
+            RateLimiter::clear($throttleKey);
+
             return $this->getSuccessRedirect();
         }
+
+        RateLimiter::hit($throttleKey, 300);
 
         return redirect()->back()->withErrors(['username' => 'Invalid credentials']);
     }
@@ -109,7 +129,11 @@ class SSOController extends Controller
 
     private function getSuccessRedirect(): RedirectResponse|LivewireRedirector
     {
-        return redirect()->intended(route('dashboard'));
+        if (Route::has('home')) {
+            return redirect()->intended(route('home'));
+        }
+
+        return redirect()->intended(url('/'));
     }
 
     private function forbidsStudentsFromLoggingIn(\Laravel\Socialite\Contracts\User $ssoUser): bool

@@ -120,10 +120,10 @@ services:
         target: .env
 
   redis:
-    # redis v5.0.5 tag as of 2019-06-25
-    # you can get the sha of an image by doing :
-    #  docker pull redis:5.0.5
-    #  docker images --digests | grep redis
+    # Keep prod pinned by digest for immutable deployments.
+    # To update this digest:
+    #  docker pull redis:8.2.2
+    #  docker images --digests | grep '^redis'
     image: redis@sha256:f0957bcaa75fd58a9a1847c1f07caf370579196259d69ac07f2e27b5b389b021
     deploy: *default-deploy
     logging: *default-logging

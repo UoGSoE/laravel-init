@@ -80,7 +80,7 @@ tooling:
       - curl -OL -o /usr/local/bin/phpcs https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar
       - php /usr/local/bin/phpcs --config-set ignore_warnings_on_exit 1
       - php /usr/local/bin/phpcs --standard=PSR12 app
-      - egrep -r '[^a-zA-Z](dd\(|dump\(|ray\()' app
+      - "! egrep -r '[^a-zA-Z](dd\\(|dump\\(|ray\\()' app"
       - php /root/.composer/vendor/bin/security-checker security:check ./composer.lock
   npm:
     service: node
@@ -89,12 +89,12 @@ tooling:
   npmd:
     service: node
     description: "Run npm run dev"
-    cmd: npm run development
+    cmd: npm run dev
   npmp:
     service: node
     description: "Run npm run prod"
-    cmd: npm run production
+    cmd: npm run build
   npmw:
     service: node
-    description: "Run npm run watch"
-    cmd: npm run watch
+    description: "Run npm run dev"
+    cmd: npm run dev

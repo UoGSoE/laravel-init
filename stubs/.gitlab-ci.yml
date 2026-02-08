@@ -53,7 +53,6 @@ unit-tests:
   - php artisan key:generate
   - php artisan config:clear
   - php artisan migrate:fresh
-  - cat .env
   - echo "Add code coverage and upload artifact to gitlab"
   - php ./vendor/bin/pest -c phpunit.gitlab.xml
 
@@ -67,7 +66,7 @@ stray-die-and-dump-check:
   stage: test
   image: $QA_IMAGE_NAME
   script:
-    - egrep -r '[^a-zA-Z](dd\(|dump\()' app || exit 0
+    - "! egrep -r '[^a-zA-Z](dd\\(|dump\\()' app"
 
 php-security-scan:
   stage: test
@@ -211,4 +210,3 @@ deploy_to_prod:
       CLEAN_COMMIT_MESSAGE=$(echo "${CI_COMMIT_MESSAGE}" | tr '\n' ' ' | sed 's/"/\\"/g')
       curl -X POST -H "Content-Type: application/json" -d '{"embeds": [{"title": "'"${STACK_NAME}"' deployed", "description": "'"${CLEAN_COMMIT_MESSAGE}"'", "color": 3447003, "fields": [{"name": "Environment", "value": "'"${CI_ENVIRONMENT_NAME}"'", "inline": true}, {"name": "Deployed By", "value": "'"${GITLAB_USER_NAME:-unknown}"'", "inline": true}], "timestamp": "'"$(date -u +'%Y-%m-%dT%H:%M:%SZ')"'"}]}' "${DISCORD_WEBHOOK}";
     fi
-

@@ -30,9 +30,6 @@ COPY database/factories database/factories
 
 
 COPY --chown=nobody composer.* ./
-RUN echo ${FLUX_USERNAME}
-RUN echo ${FLUX_LICENSE_KEY}
-
 RUN composer config http-basic.composer.fluxui.dev "${FLUX_USERNAME}" "${FLUX_LICENSE_KEY}"
 
 RUN composer install \
@@ -58,7 +55,7 @@ RUN composer install \
     --prefer-dist
 
 ### Build JS/css assets
-FROM node:20.13.1 as frontend
+FROM node:22 as frontend
 
 # workaround for mix.version() webpack bug
 RUN ln -s /home/node/public /public
