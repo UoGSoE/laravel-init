@@ -20,20 +20,7 @@ A Composer package that bootstraps Laravel projects with Flux UI, Keycloak SSO, 
 
 ## Installation
 
-Add the repository to your Laravel project's `composer.json`:
-
-```json
-{
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/UoGSoE/laravel-init"
-        }
-    ]
-}
-```
-
-Then install as a dev dependency:
+Install as a dev dependency:
 
 ```bash
 composer require --dev uogsoe/laravel-init
