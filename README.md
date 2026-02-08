@@ -67,6 +67,7 @@ Environment handling is applied in this order:
 - `APP_URL` is set to `https://<project-folder>.lndo.site/`
 - `.lando.yml` `name:` is set to `<project-folder>` (slug form)
 - `.env.example` is updated to match the final `.env`
+- `APP_KEY` in `.env.example` is refreshed using `php artisan key:generate --show`
 
 It also adds required Docker/Lando ignore entries to your project `.gitignore` and ensures:
 

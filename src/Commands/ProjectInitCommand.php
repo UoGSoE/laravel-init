@@ -97,6 +97,7 @@ class ProjectInitCommand extends Command
         $this->mergeLandoEnvOverrides();
         $this->applyProjectNameDefaults();
         $this->syncEnvExampleFromEnv();
+        $this->refreshEnvExampleAppKey();
         $this->newLine();
         $this->updateGitignore();
 
@@ -112,15 +113,19 @@ class ProjectInitCommand extends Command
     {
         $this->info('Validating environment...');
 
-        $fluxUsername = env('FLUX_USERNAME') ?: getenv('FLUX_USERNAME');
-        $fluxLicenseKey = env('FLUX_LICENSE_KEY') ?: getenv('FLUX_LICENSE_KEY');
+        if (! $this->option('skip-flux')) {
+            $fluxUsername = env('FLUX_USERNAME') ?: getenv('FLUX_USERNAME');
+            $fluxLicenseKey = env('FLUX_LICENSE_KEY') ?: getenv('FLUX_LICENSE_KEY');
 
-        if (empty($fluxUsername) || empty($fluxLicenseKey)) {
-            $this->error('FLUX_USERNAME and/or FLUX_LICENSE_KEY not set. Export them and re-run.');
+            if (empty($fluxUsername) || empty($fluxLicenseKey)) {
+                $this->error('FLUX_USERNAME and/or FLUX_LICENSE_KEY not set. Export them and re-run.');
 
-            return false;
+                return false;
+            }
+            $this->info('Flux credentials found');
+        } else {
+            $this->line('  Skipping Flux credential check (--skip-flux)');
         }
-        $this->info('Flux credentials found');
 
         $process = new Process(['git', 'status', '--porcelain'], base_path());
         $process->run();
@@ -452,9 +457,16 @@ PHP;
             return;
         }
 
+        $insertBlankLineBeforeNextKey = false;
+
         foreach ($lines as $line) {
             $trimmed = trim($line);
-            if ($trimmed === '' || str_starts_with($trimmed, '#')) {
+            if ($trimmed === '') {
+                $insertBlankLineBeforeNextKey = true;
+                continue;
+            }
+
+            if (str_starts_with($trimmed, '#')) {
                 continue;
             }
 
@@ -470,6 +482,12 @@ PHP;
             }
 
             $this->setEnvValue($envPath, $key, $value);
+
+            if ($insertBlankLineBeforeNextKey) {
+                $this->ensureBlankLineBeforeEnvKey($envPath, $key);
+            }
+
+            $insertBlankLineBeforeNextKey = false;
         }
     }
 
@@ -527,6 +545,7 @@ PHP;
         }
 
         $pattern = '/^'.preg_quote($key, '/').'=.*/m';
+        $commentedPattern = '/^\s*#\s*'.preg_quote($key, '/').'=.*/m';
         $replacement = "{$key}={$value}";
 
         if (preg_match($pattern, $contents)) {
@@ -538,7 +557,54 @@ PHP;
             return;
         }
 
+        if (preg_match($commentedPattern, $contents)) {
+            $updated = preg_replace($commentedPattern, $replacement, $contents, 1);
+            if ($updated !== null) {
+                file_put_contents($file, $updated);
+            }
+
+            return;
+        }
+
         file_put_contents($file, rtrim($contents)."\n{$replacement}\n");
+    }
+
+    private function ensureBlankLineBeforeEnvKey(string $file, string $key): void
+    {
+        if (! file_exists($file)) {
+            return;
+        }
+
+        $contents = file_get_contents($file);
+        if ($contents === false) {
+            return;
+        }
+
+        $lines = preg_split('/\R/', $contents);
+        if ($lines === false) {
+            return;
+        }
+
+        $targetPrefix = $key.'=';
+
+        foreach ($lines as $index => $line) {
+            if (! str_starts_with(ltrim($line), $targetPrefix)) {
+                continue;
+            }
+
+            if ($index === 0) {
+                return;
+            }
+
+            if (trim($lines[$index - 1]) === '') {
+                return;
+            }
+
+            array_splice($lines, $index, 0, ['']);
+            file_put_contents($file, implode("\n", $lines)."\n");
+
+            return;
+        }
     }
 
     private function syncEnvExampleFromEnv(): void
@@ -556,6 +622,38 @@ PHP;
 
         copy($envPath, $envExamplePath);
         $this->info('Updated .env.example from .env');
+    }
+
+    private function refreshEnvExampleAppKey(): void
+    {
+        $this->info('Refreshing APP_KEY in .env.example...');
+
+        $envExamplePath = base_path('.env.example');
+        if (! file_exists($envExamplePath)) {
+            $this->warn('.env.example not found. Skipping APP_KEY refresh.');
+
+            return;
+        }
+
+        $process = new Process(['php', 'artisan', 'key:generate', '--show'], base_path());
+        $process->setTimeout(30);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            $this->warn('Could not generate a fresh APP_KEY for .env.example. Leaving current value.');
+
+            return;
+        }
+
+        $appKey = trim($process->getOutput());
+        if ($appKey === '') {
+            $this->warn('Generated APP_KEY was empty. Leaving current value in .env.example.');
+
+            return;
+        }
+
+        $this->setEnvValue($envExamplePath, 'APP_KEY', $appKey);
+        $this->info('Refreshed APP_KEY in .env.example');
     }
 
     private function updateGitignore(): void
