@@ -3,7 +3,6 @@
 namespace UoGSoE\LaravelInit\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Artisan;
 use Symfony\Component\Process\Process;
 
 class ProjectInitCommand extends Command
@@ -290,12 +289,9 @@ class ProjectInitCommand extends Command
         $fluxUsername = env('FLUX_USERNAME') ?: getenv('FLUX_USERNAME');
         $fluxLicenseKey = env('FLUX_LICENSE_KEY') ?: getenv('FLUX_LICENSE_KEY');
 
-        $exitCode = Artisan::call('flux:activate', [
-            'username' => $fluxUsername,
-            'license-key' => $fluxLicenseKey,
-        ], $this->output);
-
-        if ($exitCode !== 0) {
+        // Must shell out because the Flux package was just installed via composer
+        // and the current process hasn't loaded its service provider
+        if (! $this->runProcess(['php', 'artisan', 'flux:activate', $fluxUsername, $fluxLicenseKey])) {
             $this->warn('Flux activation may have had issues, please check manually');
         }
     }
