@@ -1,21 +1,43 @@
 # Laravel Init
 
-A single-command setup script that bootstraps Laravel projects with Flux UI, Keycloak SSO, and common packages.
+A Composer package that bootstraps Laravel projects with Flux UI, Keycloak SSO, and common packages via a single Artisan command.
 
 ## What It Does
 
 - Installs and activates [Flux UI](https://fluxui.dev/) with Tailwind CSS v4
 - Configures [Keycloak SSO](https://www.keycloak.org/) via Laravel Socialite
 - Installs Horizon and Sanctum
-- Copies your template files (routes, providers, views, etc.)
+- Copies template files (routes, providers, views, etc.) with diff preview
 - Injects config into `routes/web.php` and `config/services.php`
+- Registers `SSOServiceProvider` in `bootstrap/providers.php`
 - Sets up environment variables
 
 ## Requirements
 
-- A fresh Laravel project with a clean git working tree
-- [Flux UI license](https://fluxui.dev/)
+- A fresh Laravel 11+ project with a clean git working tree
+- [Flux UI licence](https://fluxui.dev/)
 - Node.js and Composer
+
+## Installation
+
+Add the repository to your Laravel project's `composer.json`:
+
+```json
+{
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/UoGSoE/laravel-init"
+        }
+    ]
+}
+```
+
+Then install as a dev dependency:
+
+```bash
+composer require --dev uogsoe/laravel-init
+```
 
 ## Usage
 
@@ -23,12 +45,26 @@ A single-command setup script that bootstraps Laravel projects with Flux UI, Key
 export FLUX_USERNAME="your-flux-username"
 export FLUX_LICENSE_KEY="your-flux-license-key"
 
-php laravel-init.php /path/to/your-laravel-project
+php artisan project:init
 ```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--skip-npm` | Skip npm package installation |
+| `--skip-composer` | Skip composer package installation |
+| `--skip-flux` | Skip Flux activation |
+| `--force` | Overwrite all files without prompting |
+
+### File Diff Preview
+
+When copying template files that already exist in your project, the command prompts with `y/n/d(iff)`. Pressing `d` shows a unified diff between your existing file and the template, so you can make an informed decision before overwriting.
 
 ## Packages Installed
 
 **Composer:**
+- `livewire/livewire`
 - `livewire/flux`
 - `laravel/socialite`
 - `socialiteproviders/keycloak`
@@ -41,35 +77,39 @@ php laravel-init.php /path/to/your-laravel-project
 - `@tailwindcss/vite`
 - `laravel-vite-plugin`
 
-## Customization
+## Customisation
 
-Fork this repo and modify to suit your stack:
+Fork this repo and modify the properties in `src/Commands/ProjectInitCommand.php`:
 
-| Variable | Purpose |
+| Property | Purpose |
 |----------|---------|
-| `$excludeFiles` | Files/directories to skip when copying |
 | `$autoCopyPatterns` | Patterns that overwrite without prompting |
 | `$envVariables` | Environment variables added to `.env` |
 | `$gitignoreEntries` | Entries appended to `.gitignore` |
+| `$boostPromptUrl` | URL for team conventions file |
 
 ### Template Files
 
-Place your boilerplate files alongside `laravel-init.php`. The script copies everything except files in `$excludeFiles`. Existing files prompt before overwriting (unless matched by `$autoCopyPatterns`).
+Template files live in the `stubs/` directory. The command copies everything from `stubs/` into the target project. Existing files prompt before overwriting (unless matched by `$autoCopyPatterns` or `--force` is used).
 
-Example structure:
 ```
 laravel-init/
-├── laravel-init.php
-├── app/
-│   └── Providers/
-│       └── SSOServiceProvider.php
-├── routes/
-│   └── sso-auth.php
-├── resources/
-│   └── views/
-│       └── ...
-└── config/
-    └── ...
+├── composer.json
+├── src/
+│   ├── LaravelInitServiceProvider.php
+│   └── Commands/
+│       └── ProjectInitCommand.php
+└── stubs/
+    ├── app/
+    │   └── Providers/
+    │       └── SSOServiceProvider.php
+    ├── routes/
+    │   └── sso-auth.php
+    ├── resources/
+    │   └── views/
+    │       └── ...
+    └── config/
+        └── ...
 ```
 
 ## Environment Variables
@@ -88,6 +128,6 @@ SSO_ALLOW_STUDENTS=false
 SSO_ADMINS_ONLY=false
 ```
 
-## License
+## Licence
 
 MIT

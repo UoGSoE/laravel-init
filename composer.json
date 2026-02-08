@@ -1,0 +1,24 @@
+{
+    "name": "uogsoe/laravel-init",
+    "description": "Bootstraps Laravel projects with Flux UI, Keycloak SSO, and common packages",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "illuminate/console": "^11.0|^12.0",
+        "illuminate/support": "^11.0|^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "UoGSoE\\LaravelInit\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "UoGSoE\\LaravelInit\\LaravelInitServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
