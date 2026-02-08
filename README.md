@@ -57,9 +57,18 @@ When copying template files that already exist in your project, the command prom
 - `.lando.yml`
 - `docker-compose.yml`, `prod-stack.yml`, `qa-stack.yml`
 - CI files (`.github/`, `.gitlab-ci.yml`, `phpunit*.xml`, `phpunit*.Dockerfile`)
-- `Dockerfile`, `.dockerignore`, and related env examples
+- `Dockerfile`, `.dockerignore`, and related support files
 
-It also adds required Docker/Lando ignore entries to your project `.gitignore` and creates:
+Environment handling is applied in this order:
+
+- If `.env` is missing, it is created from the project's `.env.example`
+- `stubs/.env.lando` values are merged into `.env`
+- `APP_NAME` is set from the project folder name (title-cased)
+- `APP_URL` is set to `https://<project-folder>.lndo.site/`
+- `.lando.yml` `name:` is set to `<project-folder>` (slug form)
+- `.env.example` is updated to match the final `.env`
+
+It also adds required Docker/Lando ignore entries to your project `.gitignore` and ensures:
 
 - `storage/minio_dev/bucket/.gitkeep`
 - `storage/meilisearch/.gitkeep`
@@ -87,13 +96,13 @@ Fork this repo and modify the properties in `src/Commands/ProjectInitCommand.php
 | Property | Purpose |
 |----------|---------|
 | `$autoCopyPatterns` | Patterns that overwrite without prompting |
-| `$envVariables` | Environment variables added to `.env` |
+| `$internalStubFiles` | Stub files used internally (not copied directly) |
 | `$gitignoreEntries` | Entries appended to `.gitignore` |
 | `$boostPromptUrl` | URL for team conventions file |
 
 ### Template Files
 
-Template files live in the `stubs/` directory. The command copies everything from `stubs/` into the target project. Existing files prompt before overwriting (unless matched by `$autoCopyPatterns` or `--force` is used).
+Template files live in the `stubs/` directory. The command copies stubs into the target project, except internal helper files such as `stubs/.env.lando`. Existing files prompt before overwriting (unless matched by `$autoCopyPatterns` or `--force` is used).
 
 ```
 laravel-init/
@@ -117,7 +126,7 @@ laravel-init/
 
 ## Environment Variables
 
-The following are added to `.env` and `.env.example`:
+Project-specific environment values are defined in `stubs/.env.lando` and merged into `.env`, then copied to `.env.example`. This includes keys such as:
 
 ```env
 KEYCLOAK_BASE_URL=https://

@@ -15,18 +15,6 @@ class ProjectInitCommand extends Command
 
     protected $description = 'Bootstrap this Laravel project with Flux UI, Keycloak SSO, Docker/Lando, and common packages';
 
-    protected array $envVariables = [
-        'KEYCLOAK_BASE_URL' => 'https://',
-        'KEYCLOAK_REALM' => '',
-        'KEYCLOAK_CLIENT_ID' => 'name-in-keycloak',
-        'KEYCLOAK_CLIENT_SECRET' => 'secret-in-keycloak',
-        'KEYCLOAK_REDIRECT_URI' => 'http://your-app/auth/callback',
-        'SSO_ENABLED' => 'false',
-        'SSO_AUTOCREATE_NEW_USERS' => 'false',
-        'SSO_ALLOW_STUDENTS' => 'false',
-        'SSO_ADMINS_ONLY' => 'false',
-    ];
-
     protected array $gitignoreEntries = [
         '*.log',
         '.DS_Store',
@@ -66,6 +54,8 @@ class ProjectInitCommand extends Command
 
     protected array $autoCopyPatterns = ['fluxui', 'SSOServiceProvider'];
 
+    protected array $internalStubFiles = ['.env.lando'];
+
     public function handle(): int
     {
         $this->newLine();
@@ -102,7 +92,11 @@ class ProjectInitCommand extends Command
         $this->injectSsoRoute();
         $this->injectKeycloakConfig();
         $this->newLine();
-        $this->addEnvironmentVariables();
+        $this->ensureEnvFileExists();
+        $this->newLine();
+        $this->mergeLandoEnvOverrides();
+        $this->applyProjectNameDefaults();
+        $this->syncEnvExampleFromEnv();
         $this->newLine();
         $this->updateGitignore();
 
@@ -185,6 +179,10 @@ class ProjectInitCommand extends Command
                     mkdir($destPath, 0755, true);
                 }
 
+                continue;
+            }
+
+            if ($this->isInternalStubFile($relativePath)) {
                 continue;
             }
 
@@ -405,31 +403,159 @@ PHP;
         }
     }
 
-    private function addEnvironmentVariables(): void
+    private function ensureEnvFileExists(): void
     {
-        $this->info('Adding environment variables...');
+        $this->info('Ensuring .env exists...');
 
-        foreach ($this->envVariables as $key => $value) {
-            $this->upsertEnv(base_path('.env'), $key, $value);
-            $this->upsertEnv(base_path('.env.example'), $key, $value);
+        $envPath = base_path('.env');
+
+        if (file_exists($envPath)) {
+            $this->line('  .env already exists');
+
+            return;
         }
 
-        $this->info('Environment variables added to .env and .env.example');
+        $envExamplePath = base_path('.env.example');
+        if (! file_exists($envExamplePath)) {
+            $this->warn('No .env or .env.example found. Skipping .env creation.');
+
+            return;
+        }
+
+        copy($envExamplePath, $envPath);
+        $this->info('Created .env from .env.example');
     }
 
-    private function upsertEnv(string $file, string $key, string $value): void
+    private function mergeLandoEnvOverrides(): void
+    {
+        $this->info('Merging .env.lando overrides into .env...');
+
+        $landoEnvPath = $this->stubsPath('.env.lando');
+        $envPath = base_path('.env');
+
+        if (! file_exists($landoEnvPath)) {
+            $this->warn('stubs/.env.lando not found. Skipping merge.');
+
+            return;
+        }
+
+        if (! file_exists($envPath)) {
+            $this->warn('.env not found. Skipping .env.lando merge.');
+
+            return;
+        }
+
+        $lines = file($landoEnvPath, FILE_IGNORE_NEW_LINES);
+        if ($lines === false) {
+            $this->warn('Could not read stubs/.env.lando. Skipping merge.');
+
+            return;
+        }
+
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '' || str_starts_with($trimmed, '#')) {
+                continue;
+            }
+
+            if (! str_contains($line, '=')) {
+                continue;
+            }
+
+            [$key, $value] = explode('=', $line, 2);
+            $key = trim($key);
+
+            if ($key === '') {
+                continue;
+            }
+
+            $this->setEnvValue($envPath, $key, $value);
+        }
+    }
+
+    private function applyProjectNameDefaults(): void
+    {
+        $this->info('Applying project naming defaults...');
+
+        $envPath = base_path('.env');
+        $landoPath = base_path('.lando.yml');
+
+        $slug = $this->projectSlug();
+        $appName = $this->projectDisplayName();
+
+        if (file_exists($envPath)) {
+            $escapedAppName = str_replace('"', '\"', $appName);
+            $this->setEnvValue($envPath, 'APP_NAME', '"'.$escapedAppName.'"');
+            $this->setEnvValue($envPath, 'APP_URL', "https://{$slug}.lndo.site/");
+        }
+
+        if (! file_exists($landoPath)) {
+            return;
+        }
+
+        $contents = file_get_contents($landoPath);
+        if ($contents === false) {
+            $this->warn('Could not read .lando.yml to update project name.');
+
+            return;
+        }
+
+        $updated = preg_replace('/^name:\s*.*$/m', "name: {$slug}", $contents, 1, $count);
+
+        if ($updated === null) {
+            $this->warn('Could not update name key in .lando.yml.');
+
+            return;
+        }
+
+        if ($count === 0) {
+            $updated = "name: {$slug}\n".$updated;
+        }
+
+        file_put_contents($landoPath, $updated);
+    }
+
+    private function setEnvValue(string $file, string $key, string $value): void
     {
         if (! file_exists($file)) {
             return;
         }
 
         $contents = file_get_contents($file);
-
-        if (preg_match("/^{$key}=/m", $contents)) {
+        if ($contents === false) {
             return;
         }
 
-        file_put_contents($file, $contents."\n{$key}={$value}");
+        $pattern = '/^'.preg_quote($key, '/').'=.*/m';
+        $replacement = "{$key}={$value}";
+
+        if (preg_match($pattern, $contents)) {
+            $updated = preg_replace($pattern, $replacement, $contents, 1);
+            if ($updated !== null) {
+                file_put_contents($file, $updated);
+            }
+
+            return;
+        }
+
+        file_put_contents($file, rtrim($contents)."\n{$replacement}\n");
+    }
+
+    private function syncEnvExampleFromEnv(): void
+    {
+        $this->info('Syncing .env.example from .env...');
+
+        $envPath = base_path('.env');
+        $envExamplePath = base_path('.env.example');
+
+        if (! file_exists($envPath)) {
+            $this->warn('.env not found. Skipping .env.example sync.');
+
+            return;
+        }
+
+        copy($envPath, $envExamplePath);
+        $this->info('Updated .env.example from .env');
     }
 
     private function updateGitignore(): void
@@ -489,6 +615,31 @@ PHP;
         $base = dirname(__DIR__, 2).'/stubs';
 
         return $relativePath ? $base.'/'.$relativePath : $base;
+    }
+
+    private function isInternalStubFile(string $relativePath): bool
+    {
+        return in_array($relativePath, $this->internalStubFiles, true);
+    }
+
+    private function projectSlug(): string
+    {
+        $baseName = strtolower(basename(base_path()));
+        $slug = str_replace('_', '-', $baseName);
+        $slug = preg_replace('/[^a-z0-9-]+/', '-', $slug) ?? '';
+        $slug = preg_replace('/-+/', '-', $slug) ?? '';
+        $slug = trim($slug, '-');
+
+        return $slug !== '' ? $slug : 'laravel-app';
+    }
+
+    private function projectDisplayName(): string
+    {
+        $baseName = basename(base_path());
+        $spaced = str_replace(['-', '_'], ' ', $baseName);
+        $spaced = preg_replace('/\s+/', ' ', $spaced) ?? $spaced;
+
+        return ucwords(trim($spaced));
     }
 
 }
