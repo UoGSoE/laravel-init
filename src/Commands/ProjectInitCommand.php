@@ -11,7 +11,6 @@ class ProjectInitCommand extends Command
                             {--skip-npm : Skip npm package installation}
                             {--skip-composer : Skip composer package installation}
                             {--skip-flux : Skip Flux activation}
-                            {--skip-docker : Skip Docker/Lando setup}
                             {--force : Overwrite all files without prompting}';
 
     protected $description = 'Bootstrap this Laravel project with Flux UI, Keycloak SSO, Docker/Lando, and common packages';
@@ -28,32 +27,44 @@ class ProjectInitCommand extends Command
         'SSO_ADMINS_ONLY' => 'false',
     ];
 
-    protected array $gitignoreEntries = ['auth.json'];
+    protected array $gitignoreEntries = [
+        '*.log',
+        '.DS_Store',
+        '.env',
+        '.env.backup',
+        '.env.production',
+        '.phpactor.json',
+        '.phpunit.result.cache',
+        '/.fleet',
+        '/.idea',
+        '/.nova',
+        '/.phpunit.cache',
+        '/.vscode',
+        '/.zed',
+        '/auth.json',
+        '/node_modules',
+        '/public/build',
+        '/public/hot',
+        '/public/storage',
+        '/storage/*.key',
+        '/storage/pail',
+        '/vendor',
+        'Homestead.json',
+        'Homestead.yaml',
+        'Thumbs.db',
+        'auth.json',
+        '/storage/minio_dev/bucket/*',
+        '!/storage/minio_dev/bucket/.gitkeep',
+        '/storage/minio_dev/.minio.sys',
+        '/storage/meilisearch/*',
+        '!/storage/meilisearch/.gitkeep*',
+        'npm-debug.log',
+        'yarn-error.log',
+    ];
 
     protected string $boostPromptUrl = 'https://raw.githubusercontent.com/UoGSoE/boost-prompts/refs/heads/master/.ai/guidelines/team-conventions.blade.php';
 
     protected array $autoCopyPatterns = ['fluxui', 'SSOServiceProvider'];
-
-    protected array $dockerCopyEntries = [
-        'docker',
-        '.dockerignore',
-        '.env.example',
-        '.lando.yml',
-        '.env.gitlab',
-        '.github',
-        '.env.github',
-        '.gitlab-ci.yml',
-        'Dockerfile',
-        'prod-stack.yml',
-        'qa-stack.yml',
-        'docker-compose.yml',
-        'LICENSE',
-        'phpunit.github.xml',
-        'phpunit.gitlab.xml',
-        'phpunit-compose.yml',
-        'phpunit.Dockerfile',
-        'dt',
-    ];
 
     public function handle(): int
     {
@@ -70,11 +81,6 @@ class ProjectInitCommand extends Command
         $this->newLine();
         $this->copyStubs();
         $this->newLine();
-        if (! $this->option('skip-docker')) {
-            $this->installDockerSetup();
-            $this->newLine();
-        }
-
         $this->registerSsoProvider();
         $this->newLine();
 
@@ -207,35 +213,6 @@ class ProjectInitCommand extends Command
         }
     }
 
-    private function installDockerSetup(): void
-    {
-        $this->info('Installing Docker/Lando setup...');
-
-        $dockerDir = $this->dockerStuffPath();
-
-        if (! is_dir($dockerDir)) {
-            $this->warn('docker-stuff directory not found in package. Skipping Docker/Lando setup.');
-
-            return;
-        }
-
-        foreach ($this->dockerCopyEntries as $entry) {
-            $source = $dockerDir.'/'.$entry;
-            $destination = base_path($entry);
-
-            if (! file_exists($source) && ! is_dir($source)) {
-                $this->warn("Missing docker-stuff entry: {$entry}");
-
-                continue;
-            }
-
-            $this->copyPath($source, $destination);
-        }
-
-        $this->mergeDockerGitignoreEntries($dockerDir.'/_gitignore');
-        $this->ensureDockerStorageDirectories();
-    }
-
     private function promptWithDiff(string $relativePath, string $stubPath, string $existingPath): string
     {
         while (true) {
@@ -277,76 +254,6 @@ class ProjectInitCommand extends Command
 
         $this->output->write($output);
         $this->newLine();
-    }
-
-    private function copyPath(string $sourcePath, string $destinationPath): void
-    {
-        if (is_dir($sourcePath)) {
-            if (! is_dir($destinationPath)) {
-                mkdir($destinationPath, 0755, true);
-            }
-
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($sourcePath, \RecursiveDirectoryIterator::SKIP_DOTS),
-                \RecursiveIteratorIterator::SELF_FIRST
-            );
-
-            foreach ($iterator as $file) {
-                $relativePath = substr($file->getPathname(), strlen($sourcePath) + 1);
-                $destPath = $destinationPath.'/'.$relativePath;
-
-                if ($file->isDir()) {
-                    if (! is_dir($destPath)) {
-                        mkdir($destPath, 0755, true);
-                    }
-
-                    continue;
-                }
-
-                $destDir = dirname($destPath);
-                if (! is_dir($destDir)) {
-                    mkdir($destDir, 0755, true);
-                }
-
-                $this->copyFileWithPrompt($file->getPathname(), $destPath);
-            }
-
-            return;
-        }
-
-        $destDir = dirname($destinationPath);
-        if (! is_dir($destDir)) {
-            mkdir($destDir, 0755, true);
-        }
-
-        $this->copyFileWithPrompt($sourcePath, $destinationPath);
-    }
-
-    private function copyFileWithPrompt(string $sourcePath, string $destinationPath): void
-    {
-        $relativePath = ltrim(str_replace(base_path(), '', $destinationPath), '/');
-
-        if (file_exists($destinationPath)) {
-            if ($this->option('force') || $this->shouldAutoCopy($relativePath)) {
-                copy($sourcePath, $destinationPath);
-                $this->line("  Copied: {$relativePath}");
-
-                return;
-            }
-
-            $action = $this->promptWithDiff($relativePath, $sourcePath, $destinationPath);
-            if ($action === 'y') {
-                copy($sourcePath, $destinationPath);
-                $this->line("  Copied: {$relativePath}");
-            } else {
-                $this->line("  Skipped: {$relativePath}");
-            }
-
-            return;
-        }
-
-        copy($sourcePath, $destinationPath);
-        $this->line("  Copied: {$relativePath}");
     }
 
     private function shouldAutoCopy(string $path): bool
@@ -553,56 +460,6 @@ PHP;
         file_put_contents($gitignore, $contents."\n{$entry}");
     }
 
-    private function mergeDockerGitignoreEntries(string $dockerGitignorePath): void
-    {
-        if (! file_exists($dockerGitignorePath)) {
-            $this->warn('docker-stuff/_gitignore not found, skipping Docker gitignore merge');
-
-            return;
-        }
-
-        $this->info('Merging Docker gitignore entries...');
-
-        $entries = file($dockerGitignorePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-
-        foreach ($entries as $entry) {
-            $trimmed = trim($entry);
-
-            if ($trimmed === '' || str_starts_with($trimmed, '#')) {
-                continue;
-            }
-
-            $this->addToGitignore($trimmed);
-        }
-    }
-
-    private function ensureDockerStorageDirectories(): void
-    {
-        $this->info('Ensuring Docker storage directories...');
-
-        $directories = [
-            base_path('storage/minio_dev/bucket'),
-            base_path('storage/meilisearch'),
-        ];
-
-        foreach ($directories as $directory) {
-            if (! is_dir($directory)) {
-                mkdir($directory, 0755, true);
-            }
-        }
-
-        $gitKeeps = [
-            base_path('storage/minio_dev/bucket/.gitkeep'),
-            base_path('storage/meilisearch/.gitkeep'),
-        ];
-
-        foreach ($gitKeeps as $gitKeep) {
-            if (! file_exists($gitKeep)) {
-                touch($gitKeep);
-            }
-        }
-    }
-
     private function suggestBoost(): void
     {
         $composerJson = file_get_contents(base_path('composer.json'));
@@ -634,10 +491,4 @@ PHP;
         return $relativePath ? $base.'/'.$relativePath : $base;
     }
 
-    private function dockerStuffPath(string $relativePath = ''): string
-    {
-        $base = dirname(__DIR__, 2).'/docker-stuff';
-
-        return $relativePath ? $base.'/'.$relativePath : $base;
-    }
 }

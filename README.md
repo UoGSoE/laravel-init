@@ -43,7 +43,6 @@ php artisan project:init
 | `--skip-npm` | Skip npm package installation |
 | `--skip-composer` | Skip composer package installation |
 | `--skip-flux` | Skip Flux activation |
-| `--skip-docker` | Skip Docker/Lando setup |
 | `--force` | Overwrite all files without prompting |
 
 ### File Diff Preview
@@ -52,7 +51,7 @@ When copying template files that already exist in your project, the command prom
 
 ## Docker/Lando Setup
 
-By default, `project:init` also installs Docker/Lando files from `docker-stuff/`, including:
+`project:init` installs Docker/Lando files from `stubs/`, including:
 
 - `docker/` scripts/config
 - `.lando.yml`
@@ -60,11 +59,10 @@ By default, `project:init` also installs Docker/Lando files from `docker-stuff/`
 - CI files (`.github/`, `.gitlab-ci.yml`, `phpunit*.xml`, `phpunit*.Dockerfile`)
 - `Dockerfile`, `.dockerignore`, and related env examples
 
-It also:
+It also adds required Docker/Lando ignore entries to your project `.gitignore` and creates:
 
-- Merges entries from `docker-stuff/_gitignore` into your project `.gitignore`
-- Creates `storage/minio_dev/bucket/.gitkeep`
-- Creates `storage/meilisearch/.gitkeep`
+- `storage/minio_dev/bucket/.gitkeep`
+- `storage/meilisearch/.gitkeep`
 
 ## Packages Installed
 
@@ -89,7 +87,6 @@ Fork this repo and modify the properties in `src/Commands/ProjectInitCommand.php
 | Property | Purpose |
 |----------|---------|
 | `$autoCopyPatterns` | Patterns that overwrite without prompting |
-| `$dockerCopyEntries` | Docker/Lando files and directories copied from `docker-stuff/` |
 | `$envVariables` | Environment variables added to `.env` |
 | `$gitignoreEntries` | Entries appended to `.gitignore` |
 | `$boostPromptUrl` | URL for team conventions file |
