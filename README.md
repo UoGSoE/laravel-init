@@ -1,12 +1,13 @@
 # Laravel Init
 
-A Composer package that bootstraps Laravel projects with Flux UI, Keycloak SSO, and common packages via a single Artisan command.
+A Composer package that bootstraps Laravel projects with Flux UI, Keycloak SSO, Docker/Lando setup, and common packages via a single Artisan command.
 
 ## What It Does
 
 - Installs and activates [Flux UI](https://fluxui.dev/) with Tailwind CSS v4
 - Configures [Keycloak SSO](https://www.keycloak.org/) via Laravel Socialite
 - Installs Horizon and Sanctum
+- Installs Docker/Lando scaffolding used for local/dev/CI workflows
 - Copies template files (routes, providers, views, etc.) with diff preview
 - Injects config into `routes/web.php` and `config/services.php`
 - Registers `SSOServiceProvider` in `bootstrap/providers.php`
@@ -42,11 +43,28 @@ php artisan project:init
 | `--skip-npm` | Skip npm package installation |
 | `--skip-composer` | Skip composer package installation |
 | `--skip-flux` | Skip Flux activation |
+| `--skip-docker` | Skip Docker/Lando setup |
 | `--force` | Overwrite all files without prompting |
 
 ### File Diff Preview
 
 When copying template files that already exist in your project, the command prompts with `y/n/d(iff)`. Pressing `d` shows a unified diff between your existing file and the template, so you can make an informed decision before overwriting.
+
+## Docker/Lando Setup
+
+By default, `project:init` also installs Docker/Lando files from `docker-stuff/`, including:
+
+- `docker/` scripts/config
+- `.lando.yml`
+- `docker-compose.yml`, `prod-stack.yml`, `qa-stack.yml`
+- CI files (`.github/`, `.gitlab-ci.yml`, `phpunit*.xml`, `phpunit*.Dockerfile`)
+- `Dockerfile`, `.dockerignore`, and related env examples
+
+It also:
+
+- Merges entries from `docker-stuff/_gitignore` into your project `.gitignore`
+- Creates `storage/minio_dev/bucket/.gitkeep`
+- Creates `storage/meilisearch/.gitkeep`
 
 ## Packages Installed
 
@@ -71,6 +89,7 @@ Fork this repo and modify the properties in `src/Commands/ProjectInitCommand.php
 | Property | Purpose |
 |----------|---------|
 | `$autoCopyPatterns` | Patterns that overwrite without prompting |
+| `$dockerCopyEntries` | Docker/Lando files and directories copied from `docker-stuff/` |
 | `$envVariables` | Environment variables added to `.env` |
 | `$gitignoreEntries` | Entries appended to `.gitignore` |
 | `$boostPromptUrl` | URL for team conventions file |
