@@ -19,7 +19,7 @@ class TestDataSeeder extends Seeder
         $adminUser = User::factory()->create([
             'username' => 'admin2x',
             'email' => 'admin2x@example.test',
-            'password' => 'secret',
+            'password' => bcrypt('secret'),
             'is_admin' => true,
             'forenames' => 'Jenny',
             'surname' => 'MacAdmin',
@@ -28,7 +28,7 @@ class TestDataSeeder extends Seeder
         $standardUser = User::factory()->create([
             'username' => 'user2x',
             'email' => 'user2x@example.test',
-            'password' => 'secret',
+            'password' => bcrypt('secret'),
             'is_admin' => false,
             'forenames' => 'Olivia',
             'surname' => 'McUser',

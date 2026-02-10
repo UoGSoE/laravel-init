@@ -49,4 +49,11 @@ class UserFactory extends Factory
             'is_staff' => true,
         ]);
     }
+
+    public function student()
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_staff' => false,
+        ]);
+    }
 }
