@@ -7,6 +7,7 @@
         "illuminate/console": "^11.0|^12.0",
         "illuminate/support": "^11.0|^12.0"
     },
+    "keywords": ["dev"],
     "autoload": {
         "psr-4": {
             "UoGSoE\\LaravelInit\\": "src/"
