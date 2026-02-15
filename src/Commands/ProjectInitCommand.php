@@ -125,6 +125,9 @@ class ProjectInitCommand extends Command
             $this->newLine();
         }
 
+        $this->configureLivewire();
+        $this->newLine();
+
         $this->injectSsoRoute();
         $this->injectKeycloakConfig();
         $this->newLine();
@@ -398,6 +401,42 @@ class ProjectInitCommand extends Command
         if (! $this->runProcess(['php', 'artisan', 'flux:activate', $fluxUsername, $fluxLicenseKey])) {
             $this->warn('Flux activation may have had issues, please check manually');
         }
+    }
+
+    private function configureLivewire(): void
+    {
+        $this->info('Publishing and configuring Livewire config...');
+
+        if (! $this->runProcess(['php', 'artisan', 'livewire:config'])) {
+            $this->warn('Could not publish Livewire config. Please run "php artisan livewire:config" manually.');
+
+            return;
+        }
+
+        $configPath = base_path('config/livewire.php');
+
+        if (! file_exists($configPath)) {
+            $this->warn('config/livewire.php not found after publishing. Please configure manually.');
+
+            return;
+        }
+
+        $contents = file_get_contents($configPath);
+
+        $contents = preg_replace(
+            "/'type'\s*=>\s*'sfc'/",
+            "'type' => 'class'",
+            $contents
+        );
+
+        $contents = preg_replace(
+            "/'emoji'\s*=>\s*true/",
+            "'emoji' => false",
+            $contents
+        );
+
+        $this->writeFile($configPath, $contents);
+        $this->info('Configured Livewire: make_command type=class, emoji=false');
     }
 
     private function injectSsoRoute(): void
