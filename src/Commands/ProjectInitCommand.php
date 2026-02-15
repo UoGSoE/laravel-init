@@ -140,12 +140,21 @@ class ProjectInitCommand extends Command
         $this->newLine();
         $this->updateGitignore();
 
+        if (! $this->option('skip-npm')) {
+            $this->newLine();
+            $this->buildFrontendAssets();
+        }
+
+        $this->newLine();
+        $this->createLayoutsSymlink();
+
         $this->newLine();
         $this->components->info('Setup Complete!');
         $this->newLine();
         $this->printSummary();
         $this->newLine();
         $this->suggestBoost();
+        $this->printNextSteps();
 
         return self::SUCCESS;
     }
@@ -802,6 +811,60 @@ PHP;
         }
 
         $this->line("If using Claude Code, check <comment>.claude/commands</comment> for helpful migration commands.");
+    }
+
+    private function buildFrontendAssets(): void
+    {
+        $this->info('Building frontend assets...');
+
+        if (! $this->runProcess(['npm', 'run', 'build'])) {
+            $this->warn('npm run build may have had issues, please check manually');
+        }
+    }
+
+    private function createLayoutsSymlink(): void
+    {
+        $this->info('Creating layouts symlink for Livewire compatibility...');
+
+        $viewsDir = base_path('resources/views');
+        $linkPath = $viewsDir.'/layouts';
+        $target = 'components/layouts';
+
+        if (is_link($linkPath) || is_dir($linkPath)) {
+            $this->line('  resources/views/layouts already exists, skipping');
+
+            return;
+        }
+
+        if ($this->isDryRun()) {
+            $this->line("  [dry-run] Would create symlink: resources/views/layouts -> {$target}");
+            $this->summary['file_writes_skipped']++;
+
+            return;
+        }
+
+        if (! is_dir($viewsDir.'/'.$target)) {
+            $this->warn("resources/views/{$target} does not exist. Skipping symlink.");
+
+            return;
+        }
+
+        symlink($target, $linkPath);
+        $this->summary['file_writes']++;
+        $this->info('Created symlink: resources/views/layouts -> components/layouts');
+    }
+
+    private function printNextSteps(): void
+    {
+        $slug = $this->projectSlug();
+
+        $this->newLine();
+        $this->components->info('Next steps:');
+        $this->line('  cd into your project directory and run:');
+        $this->newLine();
+        $this->line('    <comment>lando start && lando mfs</comment>');
+        $this->newLine();
+        $this->line('  This will start Lando and seed the database.');
     }
 
     private function runProcess(array $command): bool
