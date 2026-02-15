@@ -586,7 +586,7 @@ PHP;
             return;
         }
 
-        $updated = preg_replace('/^name:\s*.*$/m', "name: {$slug}", $contents, 1, $count);
+        $updated = preg_replace('/^name:[ \t]*.*$/m', "name: {$slug}", $contents, 1, $count);
 
         if ($updated === null) {
             $this->warn('Could not update name key in .lando.yml.');
