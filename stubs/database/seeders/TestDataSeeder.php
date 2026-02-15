@@ -11,7 +11,7 @@ class TestDataSeeder extends Seeder
 
     public function run(): void
     {
-        // [$adminUser, $standardUser] = $this->createUsers();
+        [$adminUser, $standardUser] = $this->createUsers();
     }
 
     private function createUsers(): array
