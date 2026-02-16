@@ -393,6 +393,10 @@ class ProjectInitCommand extends Command
         if (! $this->runProcess(['composer', 'require', 'livewire/livewire', 'livewire/flux', 'laravel/socialite', 'socialiteproviders/keycloak', 'laravel/horizon', 'laravel/sanctum'])) {
             $this->warn('composer require may have had issues, please check manually');
         }
+
+        if (! $this->runProcess(['composer', 'require', '--dev', 'fruitcake/laravel-debugbar'])) {
+            $this->warn('composer require may have had issues, please check manually');
+        }
     }
 
     private function activateFlux(): void
