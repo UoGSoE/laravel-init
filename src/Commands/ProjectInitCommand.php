@@ -146,9 +146,6 @@ class ProjectInitCommand extends Command
         }
 
         $this->newLine();
-        $this->createLayoutsSymlink();
-
-        $this->newLine();
         $this->components->info('Setup Complete!');
         $this->newLine();
         $this->printSummary();
