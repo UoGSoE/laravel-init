@@ -444,6 +444,12 @@ class ProjectInitCommand extends Command
             $contents
         );
 
+        $contents = preg_replace(
+            "/views\/layouts/",
+            "views/components/layouts",
+            $contents
+        );
+
         $this->writeFile($configPath, $contents);
         $this->info('Configured Livewire: make_command type=class, emoji=false');
     }
@@ -820,38 +826,6 @@ PHP;
         if (! $this->runProcess(['npm', 'run', 'build'])) {
             $this->warn('npm run build may have had issues, please check manually');
         }
-    }
-
-    private function createLayoutsSymlink(): void
-    {
-        $this->info('Creating layouts symlink for Livewire compatibility...');
-
-        $viewsDir = base_path('resources/views');
-        $linkPath = $viewsDir.'/layouts';
-        $target = 'components/layouts';
-
-        if (is_link($linkPath) || is_dir($linkPath)) {
-            $this->line('  resources/views/layouts already exists, skipping');
-
-            return;
-        }
-
-        if ($this->isDryRun()) {
-            $this->line("  [dry-run] Would create symlink: resources/views/layouts -> {$target}");
-            $this->summary['file_writes_skipped']++;
-
-            return;
-        }
-
-        if (! is_dir($viewsDir.'/'.$target)) {
-            $this->warn("resources/views/{$target} does not exist. Skipping symlink.");
-
-            return;
-        }
-
-        symlink($target, $linkPath);
-        $this->summary['file_writes']++;
-        $this->info('Created symlink: resources/views/layouts -> components/layouts');
     }
 
     private function printNextSteps(): void
