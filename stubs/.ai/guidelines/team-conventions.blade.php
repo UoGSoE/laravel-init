@@ -28,11 +28,11 @@ We like readable helper methods and laravel policies to help keep code simple an
 
 We **never** use raw SQL or the DB facade in our code.  We **always** use the eloquent ORM and relationships.
 
-Our applications are important but do not contain a lot of data.  So we do not worry too much about micro-optimizations of database queries.  In 99.9999% of cases doing something like `User::orderBy('surname')->get()` is fine - no need to filter/select on specific columns just to save a 100th of a millisecond.
+Our applications are important but do not contain a lot of data.  So we do not worry too much about micro-optimizations of database queries.  In 99.9999% of cases doing something like `User::orderBy('surname')->get()` is fine - no need to filter/select on specific columns just to save a millisecond.
 
 We like early returns and guard clauses.  Avoid nesting if statements or using `else` whereever possible.
 
-When creating a new model - please also use the `-mf` flag to generate a migration and factory at the same time.  It just saves running multiple commands so saves some effort.
+When creating a new model - please also use the `-mf` flag to generate a migration and factory at the same time.  It just saves running multiple commands so saves some tokens.  It also makes sure the newly created files are in the format that matches the version of Laravel.
 
 ### Seeding data for local development
 
@@ -57,7 +57,7 @@ Also note that we like 'fat models' - helper methods, methods that make the main
 
 We like enums over hardcoded strings for things like statuses, roles, etc.  Use laravel's casts to convert the enum to a value.  Our convention is to use \App\Enums\ .  Where is makes sense - we add helper methods to our enums for `label()` (even if it's just doing a `ucfirst()` call - it makes presentation in templates/mailables more consistent) and also `colour()` so we again - get consistent presentation in templates (we usually follow flux-ui's colour names of 'zinc, red, orange, amber, yellow, lime, green, emerald, teal, cyan, sky, blue, indigo, violet, purple, fuchsia, pink, rose'.
 
-Eloquents `findOrFail` or `firstOrFail` methods are your friend.  We have sentry.io exception reporting.  If the application user is trying to do something weird with a non-existent records - let it blow up in their face and be reported to the developers.  
+Eloquents `findOrFail` or `firstOrFail` methods are your friend.  We have sentry.io exception reporting.  If the application user is trying to do something weird with a non-existent records - let them see a 404 page and be reported to the developers via sentry.  
 
 ### Livewire component class conventions
 
@@ -74,46 +74,6 @@ Our conventions for livewire components are:
 
 We always use queued mail notifications and we always use the --markdown versions for the templates.  Our conventions is to use the 'emails' folder, eg `php artisan make:mail SomethingHappened --markdown=emails.something-happened`
 
-### Testing style
-
-We like feature tests and rarely write unit.
-
-We always test the full side-effects and happy/unhappy paths of our code.  For example, a call to a method that will create a new record and send an email notification if validation passes - we would make sure in the test that if invalid data is passed we do not create the record or send the email.  Not just test that we got a validation error.
-
-We also test that our code does not do other things that we did not expect it to do - for example, if we are testing a method which deletes a record, we would test that just that one record was deleted, not the whole collection.
-
-We always test the existence of records using the related Eloquent model - not just doing raw database assertions.  This helps catch cases where a relation is doing some extra work or should have had a side-effect.
-
-We like our tests to be readable and easy to understand.  We always follow the 'Arrange, Act, Assert' pattern.
-
-We like TDD and Red, Green, Refactor.  Please follow that pattern when you work on this project.
-
-We like to use helpful variable names in tests.  For example we might have '$userWithProject' and '$userWithoutProject' to help us understand what is going on in the assertions.
-
-When writing tests and you are getting unexpected results with assertSee or assertDontSee - consider that it might be that Laravels exception page is showing the values in the stack trace or contextual debug into.  Do a quick sanity check using an assertStatus() call or assertHasNoErrors().  If that doesn't help **ask the user for help**.  They can visit the page in the browser and tell you exactly what is happening and even provide you a screenshot.
-
-You may also have the 'test-debug' agent available to you who can help get you unstuck without having to ask the user.  But do not keep looping without trying to ask the user or the agent!  The user spends taxpayer money from a tight research council budget on every token!
-
-We also like to keep our tests quite concise.  For example:
-
-@verbatim
-```php
-Livewire::test(CreateProject::class)
-    ->set('name', '')
-    ->set('description', '')
-    ->set('email', 'kkdkdkdkkdkd')
-    ->call('create')
-    ->assertHasErrors(['name', 'description', 'email']);
-assertCount(0, Project::all());
-```
-@endverbatim
-
-Note that we don't have individual tests for each field.  We just test that the form is invalid when the fields are empty.  We don't need to test the error messages (outside of very unique/custom validation rules).
-
-That is a common pattern in our test code.  We will quite often do something like test the happy path, then the sad path.  For most cases we are testing the functionality - not every tiny detail unless it has actual concrete business logic implications.
-
-Note: if you are running the whole test suite, you can use the `--compact` flag.  It will still show you the full output for any failures, but will save you having to fill up your context window with all the passing test names.
-
 ### UI styling
 
 We use the FluxUI component library for our UI and Livewire/AlpineJS for interactivity.
@@ -122,7 +82,7 @@ Always check with the laravel boost MCP tool for flux documentation.
 
 Do not add css classes to components for visual styling - only for spacing/alignment/positioning.  Flux has it's own styling so anything that is added will make the component look out of place.  Follow the flux conventions.  Again - the laravel boost tool is your helper here.
 
-Flux uses tailwindcss for styling and also uses it's css reset.  Make sure that anything 'clickable' has a cursor-pointer class added to it.
+Flux uses tailwindcss for styling and also uses it's css reset.
 
 Always use the appropriate flux components instead of just <p> and <a> tags. Eg:
 
@@ -144,12 +104,13 @@ Remember you can validate existence of records inside validation rules and save 
 
 ### If in doubt...
 
-The user us always happy to help you out.  They know the whole context of the application, stakeholders, conventions, etc.  They would rather you asked than take a wrong path.
+The user us always happy to help you out.  They know the whole context of the application, stakeholders, conventions, etc.  They would rather you asked than take a wrong path which costs them time and money to correct.
 
 Most of our applications have been running in production for a long time, so there are all sorts of edge cases, features that were added, then removed, the re-added with a tweak, etc.  Legacy code is a minefield - so lean on the user.
 
 If you are having a problem with a test passing - don't just keep adding code or 'hide' the problem with try/catch etc.  Ask the user for help.  They will 100x prefer to be asked a question and involved in the decision than have lots of new, weird code to debug that might be hiding critical issues.
 
+Also - sometimes just adding a call to `dump()` or `dd()` can help you understand what is going on.  It's a quick way to see what is happening in your code.  In fact Taylor Otwell and Adam Wathan refer to this as 'dump driven development' as it's the way they debug their applications.
 
 ### The most important thing
 
@@ -167,26 +128,22 @@ Note: The local test environment uses an in-memory database via the RefreshDatab
 
 Quite often you will see the developers or stakeholder names in the git commits, path names, specifications, etc.  We do not want to leak PII.  So please do not use those names in your outputs.  Especially not when writing docs or example scripts.  The one exception to that is if you are directly taling to a developer and giving them an example bash/zsh/whatever script to try right then and there.  Asking the developer to run `/Users/jenny/code/test.sh` is fine.  Putting into a readme or progress document 'Then Jimmy Smith asked for yet another feature change - omg!' is not fine.
 
-### Security/authorisation
+### Who we optimise the UX for
 
-Our users and threat model: Our users are full-time contracted academics and administrators (sometimes students who have paid a lot of money to study with us). They use these apps reluctantly - they're not exploring dev tools or crafting malicious requests.  If the basics are in place (route middleware, basic guards).  The realistic threat model is "someone makes a typo" not "someone intercepts requests to enroll colleagues on training courses." Write code for the users we actually have, not imaginary hackers.  A professor of Inorganic Chemistry who is being asked to fill in a procurement form is *really quite unlikely* to open the browser developer tools and l33t h4x0r a request to the back end so that the form is submitted under someone else's name.
+Our users are primarily academics, students and teaching administrators.  They are all busy with their work, research and studies.  We optimise out user interfaces to be _quick_.  We don't want to 'engage' our users or to optimise for the time they spend on the app.  We want to let them get in, do the thing, get out as soon and as cleanly as possible.
 
-Authorization sanity check: Before adding authorization logic, describe the attack out loud: "A user would need to [steps] in order to [bad outcome]." If the steps are implausible for our users, or the outcome is trivial, skip the check.  If you feel twitchy about it add a comment and let the user know.
-
-**Picture**:
-Does it seem like a likely thing for a professor of Inorganic Chemistry with millions of pounds of research income, a large research group to manage, PhD students to supervise, half a dozen undergrad courses to teach and some Masters project students to look after to be in some admin app and think "You know what?  I think .... and I know it's naughty!  And it's a total waste of my time! To open the browser developer tools, suddenly understand how to write some complex javascript, and then _enroll someone on a course they shouldn't be enrolled on!_!!"
-
+We do not want a Professor who is researching a cure for cancer to spend five minutes clicking through a bunch of forms, options, menus, etc.  A big button that says "Achieve my task" is what we're always aiming towards.
 
 ### Notes from your past self
 
-• Future claude, read this before you touch the code
+• Future-me, read this before you touch the keyboard
 
   - Start with the most obvious solution that satisfies the spec; don’t add guards, double-up "just in case" validation, or abstractions unless the user explicitly asks.
   - Respect the existing guarantees in the stack (Laravel validation, Blade escaping, etc.)—don’t re-implement or double-check them “just in case.”
   - In **ALL CASES**, simplicity beats “clever” logic every time.
   - If a requirement says “simple,” take it literally. No defensive programming unless requested.
   - For ambiguous cases, ask.  THIS IS CRITICAL TO THE USER.
-  - Do not use the users name or the names of anyone you see in documents you read.  Your chats with the user are logged to disk so we do not want to leak PII.  Just refer to the user as 'you', or 'stakeholders', 'the person who requested the feature', etc
+  - Do not use the users name or the names of anyone in documents you read.  Your chats with the user are logged to disk so we do not want to leak PII.  Just refer to the user as 'you', or 'stakeholders', 'the person who requested the feature', etc
   - You are in a local development environment - the test suite uses laravel's RefreshDatabase trait and uses an in-memory sqlite database, so you don't need to run migrations before creating/editing/running tests.
 
 ### Final inspiring quote
