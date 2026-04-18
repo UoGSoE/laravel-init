@@ -102,9 +102,20 @@ Leverage any project enums using laravels Enum rules.
 
 Remember you can validate existence of records inside validation rules and save yourself further `if { ... }` checks later.
 
+### Surgical changes
+
+When editing existing code, touch only what the task needs.  Every changed line should trace directly to the request.
+
+- Don't "improve" adjacent code, comments, or formatting while you're in there - that's drive-by refactoring and it makes diffs noisy and reviews painful.
+- Match the existing style, even if you'd do it differently yourself.  Pint handles formatting; leave quote styles, type hint choices, and whitespace alone unless they're actually part of the task.
+- If you notice unrelated dead code, a weird-looking bit of logic, or something that smells off - mention it, don't quietly delete or "fix" it.  The user will decide whether it's a separate job.
+- Clean up any orphans your own changes create (imports, variables, methods that became unused *because* of your edit).  Leave pre-existing dead code alone unless asked.
+
 ### If in doubt...
 
 The user us always happy to help you out.  They know the whole context of the application, stakeholders, conventions, etc.  They would rather you asked than take a wrong path which costs them time and money to correct.
+
+If a request has multiple reasonable interpretations, don't silently pick the one that feels most likely.  Briefly list the options and ask which one fits.  "Make the search faster" could mean response time, throughput, or perceived speed - pick wrong and you waste an afternoon.
 
 Most of our applications have been running in production for a long time, so there are all sorts of edge cases, features that were added, then removed, the re-added with a tweak, etc.  Legacy code is a minefield - so lean on the user.
 
