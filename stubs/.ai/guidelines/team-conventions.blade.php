@@ -59,6 +59,8 @@ We like enums over hardcoded strings for things like statuses, roles, etc.  Use 
 
 Eloquents `findOrFail` or `firstOrFail` methods are your friend.  We have sentry.io exception reporting.  If the application user is trying to do something weird with a non-existent records - let them see a 404 page and be reported to the developers via sentry.  
 
+We also have a convention that our user models have an `is_admin` boolean field and an `is_staff` one.  The `is_staff` field just indicates that a user is a member of staff in the broad sense - not just a member of the IT staff.  Our apps tend to be quite simple in terms of access policies.  Admins can see reports, change pretty much anything.  Then there are regular users who can be staff or students (students are effectively `! is_staff`) who can just do things they have permission to do for the workflow the app is capturing.
+
 ### Livewire component class conventions
 
 Our conventions for livewire components are:
